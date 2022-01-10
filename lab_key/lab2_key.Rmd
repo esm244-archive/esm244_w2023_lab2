@@ -1,0 +1,289 @@
+---
+title: "ESM 244 Lab 1 key"
+author: "Casey O'Hara"
+date: "12/20/2021"
+output: html_document
+---
+
+```{r setup, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(palmerpenguins)
+library(AICcmodavg) ### probably have to install this one
+```
+
+# Predicting penguin mass
+
+We want to create a model we can use in the field to quickly and easily estimate a penguin's mass, based on the subset of data in the `palmerpenguins` package.
+
+```{r}
+penguins_clean <- penguins %>%
+  drop_na() %>%
+  rename(mass = body_mass_g,
+         bill_l = bill_length_mm,
+         bill_d = bill_depth_mm,
+         flip_l = flipper_length_mm)
+
+mdl1 <- lm(mass ~ bill_l + bill_d + flip_l + species + sex + island, 
+                  data = penguins_clean)
+# summary(mdl1); AIC(mdl1)
+# Coefficients:
+#                   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)      -1500.029    575.822  -2.605 0.009610 ** 
+# bill_l              18.189      7.136   2.549 0.011270 *  
+# bill_d              67.575     19.821   3.409 0.000734 ***
+# flip_l              16.239      2.939   5.524 6.80e-08 ***
+# speciesChinstrap  -260.306     88.551  -2.940 0.003522 ** 
+# speciesGentoo      987.761    137.238   7.197 4.30e-12 ***
+# sexmale            387.224     48.138   8.044 1.66e-14 ***
+# islandDream        -13.103     58.541  -0.224 0.823032    
+# islandTorgersen    -48.064     60.922  -0.789 0.430722    
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 287.9 on 324 degrees of freedom
+# Multiple R-squared:  0.8752,	Adjusted R-squared:  0.8721 
+# F-statistic: 284.1 on 8 and 324 DF,  p-value: < 2.2e-16
+# 
+# [1] 4727.242
+```
+
+R has the ability to recognize a formula to be used in modeling... let's take advantage of that!
+
+```{r}
+f1 <- mass ~ bill_l + bill_d + flip_l + species + sex + island
+# class(f1)
+mdl1 <- lm(f1, data = penguins_clean)
+
+
+f2 <- mass ~ bill_l + bill_d + flip_l + species + sex
+mdl2 <- lm(f2, data = penguins_clean)
+# summary(mdl2); AIC(mdl2)
+# Coefficients:
+#                   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)      80838.770  41677.817   1.940 0.053292 .  
+# bill_l              18.997      7.086   2.681 0.007718 ** 
+# bill_d              60.749     19.926   3.049 0.002487 ** 
+# flip_l              18.064      3.088   5.849 1.20e-08 ***
+# speciesChinstrap  -274.496     81.558  -3.366 0.000855 ***
+# speciesGentoo      929.275    136.036   6.831 4.16e-11 ***
+# sexmale            382.168     47.797   7.996 2.28e-14 ***
+# year               -41.139     20.832  -1.975 0.049131 *  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 286.1 on 325 degrees of freedom
+# Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8738 
+# F-statistic: 329.3 on 7 and 325 DF,  p-value: < 2.2e-16
+# AIC: 4721.966
+```
+
+``` {r}
+f3 <- mass ~ bill_d + flip_l + species + sex
+mdl3 <- lm(f3, data = penguins_clean)
+# summary(mdl3); AIC(mdl3)
+# Coefficients:
+#                   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)      -1211.534    567.716  -2.134 0.033582 *  
+# bill_d              74.383     19.708   3.774 0.000191 ***
+# flip_l              17.544      2.866   6.121 2.66e-09 ***
+# speciesChinstrap   -78.899     45.498  -1.734 0.083838 .  
+# speciesGentoo     1153.986    118.582   9.732  < 2e-16 ***
+# sexmale            435.433     44.800   9.720  < 2e-16 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 289.8 on 327 degrees of freedom
+# Multiple R-squared:  0.8724,	Adjusted R-squared:  0.8705 
+# F-statistic: 447.3 on 5 and 327 DF,  p-value: < 2.2e-16
+# 
+# [1] 4728.575
+
+```
+
+These models all look pretty good!  All the adjusted R^2^ indicate that any of these models explains around 87% of the observed variance.  Benefits and drawbacks to each?
+
+Let's compare these models using AIC: Akaike Information Criteria - calculated from:
+
+* the number of independent variables included in the model
+* the degree to which the model fits the data
+
+AIC identifies the model that maximizes the likelihood of those parameter values given these data, using the fewest possible independent variables - penalizes overly complex models.  A lower score is better; a difference of 2 indicates a significant difference in model fit.
+
+```{r}
+AIC(mdl1, mdl2, mdl3) 
+#       df       AIC
+# mdl1	10	4727.242		
+# mdl2	 8	4723.938		
+# mdl3	 7	4728.575
+AICcmodavg::AICc(mdl1)
+AICc(mdl2)
+AICc(mdl3)
+
+AICcmodavg::aictab(list(mdl1, mdl2, mdl3))
+```
+
+From this we can see the second model is "best" by dropping info about the island (which requires 2 parameters!).   However, the first model, even with the penalty, is slightly better (though not significantly!) than model 3.
+
+But: this model is based on how well it fits the existing data set.  We want a model that will perform well in predicting data outside of the dataset used to create the model!  Here we will use a common tool in supervised machine learning - separating our data into a training dataset, to tune the parameters of the competing models, and a testing dataset to see how how well the models predict unseen data.
+
+```{r}
+
+folds <- 10
+fold_vec <- rep(1:folds, length.out = nrow(penguins_clean))
+
+set.seed(42) ### good idea for random numbers or sampling
+
+penguins_fold <- penguins_clean %>%
+  mutate(group = sample(fold_vec, size = n(), replace = FALSE))
+table(penguins_fold$group)
+
+### first fold
+test_df <- penguins_fold %>%
+  filter(group == 1)
+
+train_df <- penguins_fold %>%
+  filter(group != 1)
+```
+
+Write a quick function to calculate the root-mean-square error, which we can use to see which model predicts better.
+
+Root - Mean - Square - Error
+
+```{r}
+calc_rmse <- function(x, y) {
+  rmse <- (x - y)^2 %>% mean() %>% sqrt()
+  return(rmse)
+}
+```
+
+Use the training dataset to create two linear models, based on models 1 and 3 from earlier.
+```{r}
+training_lm1 <- lm(f1, data = train_df)
+# summary(training_lm2)
+# Coefficients:
+#                  Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)       -953.35     355.68  -2.680  0.00782 ** 
+# bill_depth_mm      252.56      19.25  13.119  < 2e-16 ***
+# speciesChinstrap    35.47      59.18   0.599  0.54944    
+# speciesGentoo     2259.64      83.25  27.143  < 2e-16 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 362 on 262 degrees of freedom
+# Multiple R-squared:  0.8011,	Adjusted R-squared:  0.7988 
+# F-statistic: 351.7 on 3 and 262 DF,  p-value: < 2.2e-16
+
+training_lm2 <- lm(f2, data = train_df)
+# summary(training_lm3)
+# Coefficients:
+#                    Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)       -4174.017    653.157  -6.391 7.52e-10 ***
+# flipper_length_mm    41.333      3.427  12.060  < 2e-16 ***
+# speciesChinstrap   -164.050     63.690  -2.576  0.01055 *  
+# speciesGentoo       279.306    105.448   2.649  0.00857 ** 
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 373.7 on 262 degrees of freedom
+# Multiple R-squared:  0.788,	Adjusted R-squared:  0.7856 
+# F-statistic: 324.7 on 3 and 262 DF,  p-value: < 2.2e-16
+training_lm3 <- lm(f3, data = train_df)
+```
+
+Now use these models to predict the mass of penguins in our testing dataset, then use our RMSE function to see how well the predictions went.
+
+```{r}
+predict_test <- test_df %>%
+  mutate(model1 = predict(training_lm1, test_df),
+         model2 = predict(training_lm2, test_df),
+         model3 = predict(training_lm3, test_df)) 
+
+rmse_predict_test <- predict_test %>%
+  summarize(rmse_mdl1 = calc_rmse(model1, mass),
+            rmse_mdl2 = calc_rmse(model2, mass),
+            rmse_mdl3 = calc_rmse(model3, mass))
+
+rmse_predict_test
+#   rmse_mdl1 rmse_mdl2 rmse_mdl3
+#       <dbl>     <dbl>     <dbl>
+# 1      326.      319.      327.
+```
+
+Quite a difference, and generally agrees with the AIC results.
+
+But now, let's up the game to K-fold cross validation.  We already assigned 10 groups, so we will do 5-fold cross validation.  Let's iterate for each group to have a turn being the testing data, using the other groups as training.
+
+```{r}
+rmse_df <- data.frame()
+
+for(i in 1:folds) {
+  # i <- 1
+  kfold_test_df <- penguins_fold %>%
+    filter(group == i)
+  kfold_train_df <- penguins_fold %>%
+    filter(group != i)
+  
+  kfold_lm1 <- lm(f1, data = kfold_train_df)
+  kfold_lm2 <- lm(f2, data = kfold_train_df)
+  kfold_lm3 <- lm(f3, data = kfold_train_df)
+  
+  ### NOTE: we can use a '.' to indicate the object piped into this
+  ### function.  This is a handy shortcut for tidyverse stuff, but could
+  ### also just call the object itself.
+  kfold_pred_df <- kfold_test_df %>%
+    mutate(mdl1 = predict(kfold_lm1, kfold_test_df),
+           mdl2 = predict(kfold_lm2, .),
+           mdl3 = predict(kfold_lm3, .))
+  kfold_rmse <- kfold_pred_df %>%
+    summarize(rmse_mdl1 = calc_rmse(mdl1, mass),
+              rmse_mdl2 = calc_rmse(mdl2, mass),
+              rmse_mdl3 = calc_rmse(mdl3, mass),
+              test_gp = i)
+  
+  rmse_df <- bind_rows(rmse_df, kfold_rmse)
+}
+
+rmse_df
+
+rmse_df %>% 
+  summarize(mean_rmse_mdl1 = mean(rmse_mdl1),
+            mean_rmse_mdl2 = mean(rmse_mdl2),
+            mean_rmse_mdl3 = mean(rmse_mdl3))
+```
+
+Here we see that model 3 does a slightly better job of predicting body mass (lower error) than model 2.  For our purposes, prediction of unseen data is more important than fitting to already-seen data.
+
+# Once a model is chosen, use the whole dataset to parameterize
+
+Here the various models are very close in performance.  Which to use?  AIC and cross-validation both indicate model 2, though this isn't always the case.  If you're using your model to predict on new data, CV is probably the better way to go, though if your data set is small, AIC is probably better.
+
+So we will use the entire dataset, rather than testing/training sets, to identify the coefficients for the final predictive model, based on model 2.  We already did this earlier, but let's do it again just to make the point.
+
+```{r}
+final_mdl <- lm(f2, data = penguins_clean)
+summary(final_mdl)
+# Coefficients:
+#                   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)      -1460.995    571.308  -2.557 0.011002 *  
+# bill_l              18.204      7.106   2.562 0.010864 *  
+# bill_d              67.218     19.742   3.405 0.000745 ***
+# flip_l              15.950      2.910   5.482 8.44e-08 ***
+# speciesChinstrap  -251.477     81.079  -3.102 0.002093 ** 
+# speciesGentoo     1014.627    129.561   7.831 6.85e-14 ***
+# sexmale            389.892     47.848   8.148 7.97e-15 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 287.3 on 326 degrees of freedom
+# Multiple R-squared:  0.875,	Adjusted R-squared:  0.8727 
+# F-statistic: 380.2 on 6 and 326 DF,  p-value: < 2.2e-16
+```
+
+Our final model:
+`r equatiomatic::extract_eq(mdl2, wrap = TRUE)`
+
+and with coefficients in place:
+`r equatiomatic::extract_eq(mdl2, wrap = TRUE, use_coefs = TRUE)`
+
