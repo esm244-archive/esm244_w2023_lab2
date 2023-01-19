@@ -27,7 +27,7 @@ penguins_clean <- penguins %>%
 
 mdl1 <- lm(mass ~ bill_l + bill_d + flip_l + species + sex + island, 
                   data = penguins_clean)
-# summary(mdl1); AIC(mdl1)
+# summary(mdl1); AIC(mdl1); BIC(mdl1)
 # Coefficients:
 #                   Estimate Std. Error t value Pr(>|t|)    
 # (Intercept)      -1500.029    575.822  -2.605 0.009610 ** 
@@ -46,7 +46,8 @@ mdl1 <- lm(mass ~ bill_l + bill_d + flip_l + species + sex + island,
 # Multiple R-squared:  0.8752,	Adjusted R-squared:  0.8721 
 # F-statistic: 284.1 on 8 and 324 DF,  p-value: < 2.2e-16
 # 
-# [1] 4727.242
+# [1] 4727.242 ### AIC
+# [1] 4765.324 ### BIC
 ```
 
 R has the ability to recognize a formula to be used in modeling... let's take advantage of that!
@@ -59,7 +60,7 @@ mdl1 <- lm(f1, data = penguins_clean)
 
 f2 <- mass ~ bill_l + bill_d + flip_l + species + sex
 mdl2 <- lm(f2, data = penguins_clean)
-# summary(mdl2); AIC(mdl2)
+# summary(mdl2); AIC(mdl2); BIC(mdl2)
 # Coefficients:
 #                   Estimate Std. Error t value Pr(>|t|)    
 # (Intercept)      80838.770  41677.817   1.940 0.053292 .  
@@ -77,12 +78,13 @@ mdl2 <- lm(f2, data = penguins_clean)
 # Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8738 
 # F-statistic: 329.3 on 7 and 325 DF,  p-value: < 2.2e-16
 # AIC: 4721.966
+# BIC: 4754.403
 ```
 
 ``` {r}
 f3 <- mass ~ bill_d + flip_l + species + sex
 mdl3 <- lm(f3, data = penguins_clean)
-# summary(mdl3); AIC(mdl3)
+# summary(mdl3); AIC(mdl3); BIC(mdl3)
 # Coefficients:
 #                   Estimate Std. Error t value Pr(>|t|)    
 # (Intercept)      -1211.534    567.716  -2.134 0.033582 *  
@@ -98,8 +100,8 @@ mdl3 <- lm(f3, data = penguins_clean)
 # Multiple R-squared:  0.8724,	Adjusted R-squared:  0.8705 
 # F-statistic: 447.3 on 5 and 327 DF,  p-value: < 2.2e-16
 # 
-# [1] 4728.575
-
+# [1] 4728.575 ### AIC
+# [1] 4755.232 ### BIC
 ```
 
 These models all look pretty good!  All the adjusted R^2^ indicate that any of these models explains around 87% of the observed variance.  Benefits and drawbacks to each?
@@ -117,11 +119,18 @@ AIC(mdl1, mdl2, mdl3)
 # mdl1	10	4727.242		
 # mdl2	 8	4723.938		
 # mdl3	 7	4728.575
+BIC(mdl1, mdl2, mdl3) 
+#       df       BIC
+# mdl1  10  4765.324
+# mdl2   8  4754.403
+# mdl3   7  4755.232
+
 AICcmodavg::AICc(mdl1)
 AICc(mdl2)
 AICc(mdl3)
 
 AICcmodavg::aictab(list(mdl1, mdl2, mdl3))
+AICcmodavg::bictab(list(mdl1, mdl2, mdl3))
 ```
 
 From this we can see the second model is "best" by dropping info about the island (which requires 2 parameters!).   However, the first model, even with the penalty, is slightly better (though not significantly!) than model 3.
